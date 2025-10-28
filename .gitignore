@@ -1,4 +1,6 @@
 node_modules/
-.vscode
+.vscode/
 .DS_Store
 dist/
+docs/API-Docs/*
+BLUEPRINT.md

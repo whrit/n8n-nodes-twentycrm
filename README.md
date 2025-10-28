@@ -14,7 +14,7 @@ Follow the [n8n community nodes installation guide](https://docs.n8n.io/integrat
 Create a Twenty API key in **Settings → Developers → API & Webhooks** inside your workspace. When configuring the `Twenty API` credentials in n8n:
 
 1. Paste the generated API key into the `API Key` field.
-2. Set the `Base URL` parameter on the node to your workspace’s REST endpoint (for example `https://app.twenty.com/rest` or `https://crm.quikturn.io/rest`).
+2. Set the `Base URL` parameter on the node to your workspace’s REST endpoint (for example `https://app.twenty.com/rest`).
 
 The nodes authenticate using Bearer tokens sent via the `Authorization` header.
 
