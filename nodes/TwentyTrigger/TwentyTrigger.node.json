@@ -1,0 +1,18 @@
+{
+  "node": "n8n-nodes-twenty",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Sales", "CRM"],
+  "resources": {
+    "credentialDocumentation": [
+      {
+        "url": "https://github.com/whrit/n8n-nodes-twentycrm#credentials"
+      }
+    ],
+    "primaryDocumentation": [
+      {
+        "url": "https://github.com/whrit/n8n-nodes-twentycrm"
+      }
+    ]
+  }
+}

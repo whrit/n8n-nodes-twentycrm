@@ -1,0 +1,28 @@
+{
+  "git": {
+    "commitMessage": "chore(release): release v${version}",
+    "tagName": "v${version}",
+    "requireCleanWorkingDir": true,
+    "requireUpstream": true
+  },
+  "github": {
+    "release": true,
+    "releaseName": "Release v${version}",
+    "tokenRef": "GITHUB_TOKEN"
+  },
+  "npm": {
+    "publish": true,
+    "access": "public",
+    "otp": false
+  },
+  "hooks": {
+    "after:bump": ["npm run build"],
+    "before:release": "npm run build"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "conventionalcommits",
+      "infile": "CHANGELOG.md"
+    }
+  }
+}

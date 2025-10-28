@@ -1,46 +1,60 @@
-# n8n-nodes-twentycrm
+# n8n-nodes-twenty
 
-This is an n8n community node. It lets you use _app/service name_ in your n8n workflows.
+Community nodes that let you work with the [Twenty](https://twenty.com) CRM API from inside n8n. The package ships two nodes:
 
-_App/service name_ is _one or two sentences describing the service this node integrates with_.
-
-[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
-
-[Installation](#installation)
-[Operations](#operations)
-[Credentials](#credentials)
-[Compatibility](#compatibility)
-[Usage](#usage)
-[Resources](#resources)
-[Version history](#version-history)
+- **Twenty** — declarative REST actions for people, companies, and notes.
+- **Twenty Trigger** — programmatic webhook trigger for as-you-happen updates from Twenty.
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
-
-## Operations
-
-_List the operations supported by your node._
+Follow the [n8n community nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) to add this package to your n8n instance.
 
 ## Credentials
 
-_If users need to authenticate with the app/service, provide details here. You should include prerequisites (such as signing up with the service), available authentication methods, and how to set them up._
+Create a Twenty API key in **Settings → Developers → API & Webhooks** inside your workspace. When configuring the `Twenty API` credentials in n8n:
+
+1. Paste the generated API key into the `API Key` field.
+2. Set the `Base URL` parameter on the node to your workspace’s REST endpoint (for example `https://app.twenty.com/rest` or `https://crm.quikturn.io/rest`).
+
+The nodes authenticate using Bearer tokens sent via the `Authorization` header.
+
+## Operations
+
+### Twenty node
+
+| Resource | Operation | Description |
+| --- | --- | --- |
+| Person | Create | Create a person with name, primary email, optional company, and profile details. |
+| Person | Find by Email | Look up one or more people by primary email using Twenty filters. |
+| Person | Update | Patch an existing person with only the fields you supply. |
+| Company | Create | Create a company record including domain, profile, and ownership fields. |
+| Company | Update | Update selected attributes on an existing company record. |
+| Note | Create | Publish a markdown note and attach it to people or companies. |
+
+Each action exposes additional optional fields (phones, links, custom fields, etc.) that map directly to Twenty’s REST schema defined in [`docs/API-Docs/twenty-schema-core-api-docs.md`](docs/API-Docs/twenty-schema-core-api-docs.md).
+
+### Twenty Trigger
+
+Receives webhook calls from Twenty. Configure one or more event types (e.g. `person.created`, `person.updated`, `company.created`, `note.created`) and, optionally, a shared secret. The trigger validates the `X-Twenty-Webhook-Signature` header when a secret is set and only emits events that match the selected filters.
+
+> **Webhook setup:** After activating a workflow, copy the production webhook URL provided by n8n and register it in Twenty under **Settings → Developers → Webhooks** with the same shared secret (if used).
+
+## Usage tips
+
+- **Base URL:** Ensure the field includes the `/rest` suffix for your workspace domain (e.g. `https://your-workspace.twenty.com/rest`).
+- **Custom fields:** Supply JSON objects via the `Custom Fields (JSON)` inputs to merge arbitrary custom field data into records.
+- **Webhook verification:** Keep the shared secret in sync between Twenty and the trigger node to prevent replay or spoofing.
 
 ## Compatibility
 
-_State the minimum n8n version, as well as which versions you test against. You can also include any known version incompatibility issues._
-
-## Usage
-
-_This is an optional section. Use it to help users with any difficult or confusing aspects of the node._
-
-_By the time users are looking for community nodes, they probably already know n8n basics. But if you expect new users, you can link to the [Try it out](https://docs.n8n.io/try-it-out/) documentation to help them get started._
+Tested with n8n `1.64.x` and later and Twenty’s REST API `2025-01` schema. Earlier n8n versions that support community nodes and declarative routing should also work.
 
 ## Resources
 
-* [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
-* _Link to app/service documentation._
+- [Twenty in-app API reference](https://app.twenty.com/settings/developers)
+- [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
+- [Full Twenty schema (OpenAPI)](docs/API-Docs/twenty-schema-core-api-docs.md)
 
 ## Version history
 
-_This is another optional section. If your node has multiple versions, include a short description of available versions and what changed, as well as any compatibility impact._
+- `0.1.0` – Initial release with people/company/note actions and webhook trigger.
