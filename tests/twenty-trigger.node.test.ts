@@ -1,3 +1,4 @@
+/* eslint-disable @n8n/community-nodes/no-restricted-imports */
 import { describe, expect, it } from 'vitest';
 import { TwentyTrigger } from '../nodes/TwentyTrigger/TwentyTrigger.node';
 

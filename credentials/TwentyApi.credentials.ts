@@ -1,5 +1,6 @@
 import type {
 	IAuthenticateGeneric,
+	Icon,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -9,6 +10,8 @@ export class TwentyApi implements ICredentialType {
 	name = 'twentyApi';
 
 	displayName = 'Twenty API';
+
+	icon: Icon = { light: 'file:twenty.svg', dark: 'file:twenty.dark.svg' };
 
 	documentationUrl = 'https://github.com/whrit/n8n-nodes-twentycrm#readme';
 

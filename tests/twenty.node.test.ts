@@ -1,3 +1,4 @@
+/* eslint-disable @n8n/community-nodes/no-restricted-imports */
 import { describe, expect, it } from 'vitest';
 import type { INodeProperties } from 'n8n-workflow';
 import { Twenty } from '../nodes/Twenty/Twenty.node';

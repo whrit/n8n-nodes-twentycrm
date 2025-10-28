@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { Buffer } from 'buffer';
 import type {
 	IDataObject,
 	IHookFunctions,
@@ -32,6 +31,7 @@ export class TwentyTrigger implements INodeType {
 		defaults: {
 			name: 'Twenty Trigger',
 		},
+		usableAsTool: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
@@ -57,6 +57,9 @@ export class TwentyTrigger implements INodeType {
 				displayName: 'Shared Secret',
 				name: 'secret',
 				type: 'string',
+				typeOptions: {
+					password: true,
+				},
 				default: '',
 				description:
 					'Shared secret configured in Twenty. Incoming requests must include a matching signature.',
@@ -117,7 +120,7 @@ export class TwentyTrigger implements INodeType {
 				if (providedBuffer.length === computedBuffer.length) {
 					signaturesMatch = timingSafeEqual(providedBuffer, computedBuffer);
 				}
-			} catch (error) {
+			} catch {
 				signaturesMatch = false;
 			}
 

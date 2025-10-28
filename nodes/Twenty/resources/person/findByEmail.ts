@@ -11,6 +11,7 @@ export const personFindByEmailDescription: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		required: true,
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email address to search for',
 		displayOptions: {
@@ -41,7 +42,7 @@ export const personFindByEmailDescription: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 1,
+		default: 50,
 		typeOptions: {
 			minValue: 1,
 			maxValue: 200,
@@ -49,7 +50,7 @@ export const personFindByEmailDescription: INodeProperties[] = [
 		displayOptions: {
 			show: displayOptions,
 		},
-		description: 'Maximum number of matches to return',
+		description: 'Max number of results to return',
 		routing: {
 			send: {
 				type: 'query',
