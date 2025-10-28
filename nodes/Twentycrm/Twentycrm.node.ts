@@ -19,7 +19,7 @@ export class Twentycrm implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'twentycrmApi', required: true }],
 		requestDefaults: {
-			baseURL: 'https://crm.quikturn.io/rest',
+			baseURL: '',
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
