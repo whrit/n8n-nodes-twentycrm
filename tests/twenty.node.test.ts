@@ -60,7 +60,7 @@ describe('Twenty node description', () => {
 		const personOperations = personOperation?.options ?? [];
 		const personOperationValues = personOperations.map((option) => option.value);
 		expect(personOperationValues).toEqual(
-			expect.arrayContaining(['create', 'findByEmail', 'list', 'get', 'delete', 'findDuplicates', 'update']),
+			expect.arrayContaining(['create', 'findByEmail', 'bulkMatch', 'list', 'get', 'delete', 'findDuplicates', 'update']),
 		);
 
 		const createOp = personOperations.find((option) => option.value === 'create');
@@ -73,6 +73,16 @@ describe('Twenty node description', () => {
 		expect(findOp?.routing?.request?.qs?.filter).toBe(
 			'={{"emails.primaryEmail[eq]:" + $parameter["email"]}}',
 		);
+
+		const bulkMatchOp = personOperations.find((option) => option.value === 'bulkMatch');
+		expect(bulkMatchOp?.routing?.request?.method).toBe('POST');
+		expect(bulkMatchOp?.routing?.request?.url).toBe('=/people/duplicates');
+		expect(bulkMatchOp?.routing?.request?.body?.data).toEqual(expect.any(String));
+		const bulkMatchPostReceive = bulkMatchOp?.routing?.output?.postReceive?.[0] as
+			| Record<string, unknown>
+			| undefined;
+		expect(bulkMatchPostReceive?.properties?.value).toEqual(expect.any(String));
+		expect(bulkMatchPostReceive?.properties?.value).toContain('personDuplicates');
 
 		const listOp = personOperations.find((option) => option.value === 'list');
 		expect(listOp?.routing?.request?.method).toBe('GET');
@@ -108,6 +118,20 @@ describe('Twenty node description', () => {
 		const updateOp = personOperations.find((option) => option.value === 'update');
 		expect(updateOp?.routing?.request?.method).toBe('PATCH');
 		expect(updateOp?.routing?.request?.url).toBe('=/people/{{$parameter["personId"]}}');
+	});
+
+	it('provides person bulk match configuration fields', () => {
+		const peopleJsonField = findProperty(description.properties, 'peopleJson', {
+			resource: 'person',
+			operation: 'bulkMatch',
+		});
+		expect(peopleJsonField?.type).toBe('json');
+
+		const depthField = findProperty(description.properties, 'depth', {
+			resource: 'person',
+			operation: 'bulkMatch',
+		});
+		expect(depthField?.type).toBe('options');
 	});
 
 	it('provides person list query parameter fields', () => {
@@ -175,7 +199,7 @@ describe('Twenty node description', () => {
 		const options = companyOperation?.options ?? [];
 		const values = options.map((option) => option.value);
 		expect(values).toEqual(
-			expect.arrayContaining(['create', 'match', 'list', 'get', 'delete', 'findDuplicates', 'update']),
+			expect.arrayContaining(['create', 'match', 'bulkMatch', 'list', 'get', 'delete', 'findDuplicates', 'update']),
 		);
 
 		const matchOp = options.find((option) => option.value === 'match');
@@ -183,6 +207,16 @@ describe('Twenty node description', () => {
 		expect(matchOp?.routing?.request?.url).toBe('=/companies');
 		expect(matchOp?.routing?.request?.qs?.filter).toEqual(expect.any(String));
 		expect(matchOp?.routing?.output?.postReceive).toBeDefined();
+
+		const matchPostReceive = matchOp?.routing?.output?.postReceive?.[0] as Record<string, unknown> | undefined;
+		expect(matchPostReceive?.properties?.value).toContain('matchFound');
+
+		const bulkMatchOp = options.find((option) => option.value === 'bulkMatch');
+		expect(bulkMatchOp?.routing?.request?.method).toBe('POST');
+		expect(bulkMatchOp?.routing?.request?.url).toBe('=/companies/duplicates');
+		expect(bulkMatchOp?.routing?.request?.body?.data).toEqual(expect.any(String));
+		const bulkMatchPostReceive = bulkMatchOp?.routing?.output?.postReceive?.[0] as Record<string, unknown> | undefined;
+		expect(bulkMatchPostReceive?.properties?.value).toContain('companyDuplicates');
 
 		const listOp = options.find((option) => option.value === 'list');
 		expect(listOp?.routing?.request?.method).toBe('GET');
@@ -226,6 +260,20 @@ describe('Twenty node description', () => {
 			operation: 'match',
 		});
 		expect(fallbackField?.type).toBe('options');
+	});
+
+	it('provides company bulk match configuration fields', () => {
+		const companiesJsonField = findProperty(description.properties, 'companiesJson', {
+			resource: 'company',
+			operation: 'bulkMatch',
+		});
+		expect(companiesJsonField?.type).toBe('json');
+
+		const depthField = findProperty(description.properties, 'depth', {
+			resource: 'company',
+			operation: 'bulkMatch',
+		});
+		expect(depthField?.type).toBe('options');
 	});
 
 	it('defines input fields for person create and update operations', () => {

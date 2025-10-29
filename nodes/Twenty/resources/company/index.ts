@@ -6,6 +6,7 @@ import { companyGetDescription } from './get';
 import { companyDeleteDescription } from './delete';
 import { companyFindDuplicatesDescription } from './findDuplicates';
 import { companyMatchDescription } from './match';
+import { companyBulkMatchDescription } from './bulkMatch';
 
 const showForCompany = {
 	resource: ['company'],
@@ -148,6 +149,44 @@ const buildUpdatePayload = `={{ (() => {
 	return payload;
 })() }}`;
 
+
+const buildBulkMatchCompaniesPayload = `={{ (() => {
+	const parseArray = (input) => {
+		if (Array.isArray(input)) {
+			return input;
+		}
+		if (typeof input === "string" && input.trim().length > 0) {
+			const parsed = JSON.parse(input);
+			if (!Array.isArray(parsed)) {
+				throw new Error('Companies (JSON) must be an array');
+			}
+			return parsed;
+		}
+		if (input && typeof input === "object" && !Array.isArray(input)) {
+			throw new Error('Companies (JSON) must be an array');
+		}
+		return undefined;
+	};
+
+	const fromParam = parseArray($parameter["companiesJson"]);
+	if (fromParam) {
+		return fromParam;
+	}
+
+	const fromInput = parseArray($json["companies"]);
+	if (fromInput) {
+		return fromInput;
+	}
+
+	throw new Error('Provide Companies (JSON) or an incoming "companies" array for bulk company match');
+})() }}`;
+
+const buildBulkMatchCompaniesOutput = `={{ ($response.data ?? []).map((entry) => ({
+	totalCount: entry.totalCount ?? (entry.companyDuplicates?.length ?? 0),
+	matches: entry.companyDuplicates ?? [],
+	pageInfo: entry.pageInfo ?? null,
+})) }}`;
+
 export const companyDescription: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -205,8 +244,35 @@ export const companyDescription: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value:
-										'={{ $response.data?.companies?.[0]?.id ? [{ companyId: $response.data.companies[0].id, company: $response.data.companies[0] }] : [] }}',
+									value: '={{ (() => {\n\tconst match = $response.data?.companies?.[0];\n\tif (!match) {\n\t\treturn { matchFound: false, companyId: null, company: null };\n\t}\n\treturn { matchFound: true, companyId: match.id, company: match };\n})() }}',
+								},
+							},
+						],
+					},
+				},
+			},
+			{
+				name: 'Bulk Match',
+				value: 'bulkMatch',
+				action: 'Bulk match companies',
+				description: 'Match multiple companies and return potential duplicates for each',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/companies/duplicates',
+						qs: {
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+						body: {
+							data: buildBulkMatchCompaniesPayload,
+						},
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: buildBulkMatchCompaniesOutput,
 								},
 							},
 						],
@@ -297,6 +363,7 @@ export const companyDescription: INodeProperties[] = [
 	},
 	...companyCreateDescription,
 	...companyMatchDescription,
+	...companyBulkMatchDescription,
 	...companyListDescription,
 	...companyGetDescription,
 	...companyDeleteDescription,

@@ -6,6 +6,7 @@ import { personGetDescription } from './get';
 import { personDeleteDescription } from './delete';
 import { personFindDuplicatesDescription } from './findDuplicates';
 import { personUpdateDescription } from './update';
+import { personBulkMatchDescription } from './bulkMatch';
 
 const showForPerson = {
 	resource: ['person'],
@@ -150,6 +151,44 @@ const buildUpdatePayload = `={{ (() => {
 	return payload;
 })() }}`;
 
+
+const buildBulkMatchPeoplePayload = `={{ (() => {
+	const parseArray = (input) => {
+		if (Array.isArray(input)) {
+			return input;
+		}
+		if (typeof input === "string" && input.trim().length > 0) {
+			const parsed = JSON.parse(input);
+			if (!Array.isArray(parsed)) {
+				throw new Error('People (JSON) must be an array');
+			}
+			return parsed;
+		}
+		if (input && typeof input === "object" && !Array.isArray(input)) {
+			throw new Error('People (JSON) must be an array');
+		}
+		return undefined;
+	};
+
+	const fromParam = parseArray($parameter["peopleJson"]);
+	if (fromParam) {
+		return fromParam;
+	}
+
+	const fromInput = parseArray($json["people"]);
+	if (fromInput) {
+		return fromInput;
+	}
+
+	throw new Error('Provide People (JSON) or an incoming "people" array for bulk person match');
+})() }}`;
+
+const buildBulkMatchPeopleOutput = `={{ ($response.data ?? []).map((entry) => ({
+	totalCount: entry.totalCount ?? (entry.personDuplicates?.length ?? 0),
+	matches: entry.personDuplicates ?? [],
+	pageInfo: entry.pageInfo ?? null,
+})) }}`;
+
 export const personDescription: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -185,6 +224,34 @@ export const personDescription: INodeProperties[] = [
 						qs: {
 							filter: '={{"emails.primaryEmail[eq]:" + $parameter["email"]}}',
 						},
+					},
+				},
+			},
+			{
+				name: 'Bulk Match',
+				value: 'bulkMatch',
+				action: 'Bulk match people',
+				description: 'Match multiple people and return potential duplicates for each',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/people/duplicates',
+						qs: {
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+						body: {
+							data: buildBulkMatchPeoplePayload,
+						},
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: buildBulkMatchPeopleOutput,
+								},
+							},
+						],
 					},
 				},
 			},
@@ -273,6 +340,7 @@ export const personDescription: INodeProperties[] = [
 	},
 	...personCreateDescription,
 	...personFindByEmailDescription,
+	...personBulkMatchDescription,
 	...personListDescription,
 	...personGetDescription,
 	...personDeleteDescription,
