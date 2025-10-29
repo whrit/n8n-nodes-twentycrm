@@ -29,7 +29,7 @@ export const batchDescription: INodeProperties[] = [
 			{
 				name: 'Create People',
 				value: 'createPeople',
-				action: 'Create people (batch)',
+				action: 'Create people',
 				description: 'Create multiple people in one request',
 				routing: {
 					request: {
@@ -43,7 +43,7 @@ export const batchDescription: INodeProperties[] = [
 			{
 				name: 'Create Companies',
 				value: 'createCompanies',
-				action: 'Create companies (batch)',
+				action: 'Create companies',
 				description: 'Create multiple companies in one request',
 				routing: {
 					request: {
@@ -57,7 +57,7 @@ export const batchDescription: INodeProperties[] = [
 			{
 				name: 'Create Notes',
 				value: 'createNotes',
-				action: 'Create notes (batch)',
+				action: 'Create notes',
 				description: 'Create multiple notes in one request',
 				routing: {
 					request: {
@@ -103,7 +103,11 @@ export const batchDescription: INodeProperties[] = [
 		default: 'skip',
 		options: [
 			{ name: 'Create Only', value: 'skip', description: 'Skip existing matches' },
-			{ name: 'Upsert', value: 'upsert', description: 'Update existing matches while creating new records' },
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+			},
 		],
 		description: 'Controls whether existing records are updated when matching criteria is met',
 		displayOptions: {
@@ -111,4 +115,3 @@ export const batchDescription: INodeProperties[] = [
 		},
 	},
 ];
-

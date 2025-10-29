@@ -10,12 +10,12 @@ export const noteListDescription: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 60,
+		default: 50,
 		typeOptions: {
 			maxValue: 200,
-			minValue: 0,
+			minValue: 1,
 		},
-		description: 'Maximum number of notes to return (0-200, default 60)',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: displayOptions,
 		},
@@ -76,4 +76,3 @@ export const noteListDescription: INodeProperties[] = [
 		},
 	},
 ];
-

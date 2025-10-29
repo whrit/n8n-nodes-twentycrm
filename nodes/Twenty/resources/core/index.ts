@@ -17,7 +17,7 @@ export const coreDescription: INodeProperties[] = [
 			{
 				name: 'Get OpenAPI Spec',
 				value: 'getOpenApiSpec',
-				action: 'Get OpenAPI specification',
+				action: 'Get openapi spec',
 				description: 'Retrieve the OpenAPI specification for the Twenty core schema',
 				routing: {
 					request: {

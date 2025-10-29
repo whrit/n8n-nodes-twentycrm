@@ -34,7 +34,7 @@ export const companyMatchDescription: INodeProperties[] = [
 		default: 'domainThenName',
 		options: [
 			{
-				name: 'Domain then Name',
+				name: 'Domain Then Name',
 				value: 'domainThenName',
 				description: 'Try domain first; if not provided, fall back to name',
 			},
@@ -49,7 +49,7 @@ export const companyMatchDescription: INodeProperties[] = [
 				description: 'Only attempt matching by name',
 			},
 			{
-				name: 'Domain or Name',
+				name: 'Domain Or Name',
 				value: 'domainOrName',
 				description: 'Match using either domain or name in a single request',
 			},
