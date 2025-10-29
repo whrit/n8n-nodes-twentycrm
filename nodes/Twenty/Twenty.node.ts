@@ -2,6 +2,8 @@ import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from '
 import { personDescription } from './resources/person';
 import { companyDescription } from './resources/company';
 import { noteDescription } from './resources/note';
+import { batchDescription } from './resources/batch';
+import { coreDescription } from './resources/core';
 
 export class Twenty implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,12 +47,16 @@ export class Twenty implements INodeType {
 					{ name: 'Person', value: 'person' },
 					{ name: 'Company', value: 'company' },
 					{ name: 'Note', value: 'note' },
+					{ name: 'Batch', value: 'batch' },
+					{ name: 'Core Schema', value: 'core' },
 				],
 				default: 'person',
 			},
 			...personDescription,
 			...companyDescription,
 			...noteDescription,
+			...batchDescription,
+			...coreDescription,
 		],
 	};
 }

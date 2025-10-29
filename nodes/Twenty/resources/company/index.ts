@@ -1,6 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { companyCreateDescription } from './create';
 import { companyUpdateDescription } from './update';
+import { companyListDescription } from './list';
+import { companyGetDescription } from './get';
+import { companyDeleteDescription } from './delete';
+import { companyFindDuplicatesDescription } from './findDuplicates';
+import { companyMatchDescription } from './match';
 
 const showForCompany = {
 	resource: ['company'],
@@ -156,32 +161,145 @@ export const companyDescription: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-					action: 'Create company',
-					description: 'Create a company record',
-					routing: {
-						request: {
-							method: 'POST',
-							url: '=/companies',
-							body: buildCreatePayload,
+				action: 'Create company',
+				description: 'Create a company record',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/companies',
+						body: buildCreatePayload,
+					},
+				},
+			},
+			{
+				name: 'Match',
+				value: 'match',
+				action: 'Match company',
+				description: 'Look up an existing company by domain or name',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/companies',
+						qs: {
+							filter: `={{ (() => {
+								const domain = ($parameter["domain"] ?? "").trim();
+								const name = ($parameter["name"] ?? "").trim();
+								const strategy = $parameter["fallbackStrategy"] ?? "domainThenName";
+								if (domain && strategy !== "nameOnly") {
+									if (name && strategy === "domainOrName") {
+										return \`or(domainName.primaryLinkUrl[eq]:"\${domain}",name[eq]:"\${name}")\`;
+									}
+									return \`domainName.primaryLinkUrl[eq]:"\${domain}"\`;
+								}
+								if (name && strategy !== "domainOnly") {
+									return \`name[eq]:"\${name}"\`;
+								}
+								return undefined;
+							})() }}`,
+							limit: '1',
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value:
+										'={{ $response.data?.companies?.[0]?.id ? [{ companyId: $response.data.companies[0].id, company: $response.data.companies[0] }] : [] }}',
+								},
+							},
+						],
+					},
+				},
+			},
+			{
+				name: 'List',
+				value: 'list',
+				action: 'List companies',
+				description: 'Retrieve companies with filtering, sorting, and pagination',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/companies',
+						qs: {
+							limit: '={{$parameter["limit"]}}',
+							order_by: '={{$parameter["orderBy"] || undefined}}',
+							filter: '={{$parameter["filter"] || undefined}}',
+							depth: '={{$parameter["depth"] ?? undefined}}',
+							starting_after: '={{$parameter["startingAfter"] || undefined}}',
+							ending_before: '={{$parameter["endingBefore"] || undefined}}',
 						},
 					},
 				},
-				{
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get company',
+				description: 'Retrieve a specific company by ID',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/companies/{{$parameter["companyId"]}}',
+						qs: {
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+					},
+				},
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				action: 'Delete company',
+				description: 'Remove a company from Twenty',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/companies/{{$parameter["companyId"]}}',
+					},
+				},
+			},
+			{
+				name: 'Find Duplicates',
+				value: 'findDuplicates',
+				action: 'Find company duplicates',
+				description: 'Identify potential duplicate company records',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/companies/duplicates',
+						qs: {
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+						body: {
+							data: '={{$parameter["companiesJson"] ? JSON.parse($parameter["companiesJson"]) : undefined}}',
+							ids: '={{$parameter["ids"]?.length ? $parameter["ids"] : undefined}}',
+						},
+					},
+				},
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update company',
-					description: 'Update an existing company record',
-					routing: {
-						request: {
-							method: 'PATCH',
-							url: '=/companies/{{$parameter["companyId"]}}',
-							body: buildUpdatePayload,
-						},
+				description: 'Update an existing company record',
+				routing: {
+					request: {
+						method: 'PATCH',
+						url: '=/companies/{{$parameter["companyId"]}}',
+						body: buildUpdatePayload,
 					},
 				},
-			],
+			},
+		],
 		default: 'create',
 	},
 	...companyCreateDescription,
+	...companyMatchDescription,
+	...companyListDescription,
+	...companyGetDescription,
+	...companyDeleteDescription,
+	...companyFindDuplicatesDescription,
 	...companyUpdateDescription,
 ];

@@ -1,6 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { personCreateDescription } from './create';
 import { personFindByEmailDescription } from './findByEmail';
+import { personListDescription } from './list';
+import { personGetDescription } from './get';
+import { personDeleteDescription } from './delete';
+import { personFindDuplicatesDescription } from './findDuplicates';
 import { personUpdateDescription } from './update';
 
 const showForPerson = {
@@ -159,48 +163,119 @@ export const personDescription: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-					action: 'Create person',
-					description: 'Create a person in Twenty',
-					routing: {
-						request: {
-							method: 'POST',
-							url: '=/people',
-							body: buildCreatePayload,
-						},
+				action: 'Create person',
+				description: 'Create a person in Twenty',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/people',
+						body: buildCreatePayload,
 					},
 				},
+			},
 			{
 				name: 'Find by Email',
 				value: 'findByEmail',
-					action: 'Find person by email',
-					description: 'Retrieve people that match an email address',
-					routing: {
-						request: {
-							method: 'GET',
-							url: '=/people',
-							qs: {
-								filter: '={{"emails.primaryEmail[eq]:" + $parameter["email"]}}',
-							},
+				action: 'Find person by email',
+				description: 'Retrieve people that match an email address',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/people',
+						qs: {
+							filter: '={{"emails.primaryEmail[eq]:" + $parameter["email"]}}',
 						},
 					},
+				},
+			},
+			{
+				name: 'List',
+				value: 'list',
+				action: 'List people',
+				description: 'Retrieve people with filtering, sorting, and pagination',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/people',
+						qs: {
+							limit: '={{$parameter["limit"]}}',
+							order_by: '={{$parameter["orderBy"] || undefined}}',
+							filter: '={{$parameter["filter"] || undefined}}',
+							depth: '={{$parameter["depth"] ?? undefined}}',
+							starting_after: '={{$parameter["startingAfter"] || undefined}}',
+							ending_before: '={{$parameter["endingBefore"] || undefined}}',
+						},
+					},
+				},
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get person',
+				description: 'Retrieve a specific person by ID',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/people/{{$parameter["personId"]}}',
+						qs: {
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+					},
+				},
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				action: 'Delete person',
+				description: 'Remove a person from Twenty',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/people/{{$parameter["personId"]}}',
+					},
+				},
+			},
+			{
+				name: 'Find Duplicates',
+				value: 'findDuplicates',
+				action: 'Find person duplicates',
+				description:
+					'Identify potential duplicates using record IDs or person payloads',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/people/duplicates',
+						qs: {
+							depth: '={{$parameter["depth"] ?? undefined}}',
+						},
+						body: {
+							data: '={{$parameter["peopleJson"] ? JSON.parse($parameter["peopleJson"]) : undefined}}',
+							ids: '={{$parameter["ids"]?.length ? $parameter["ids"] : undefined}}',
+						},
+					},
+				},
 			},
 			{
 				name: 'Update',
 				value: 'update',
-					action: 'Update person',
-					description: 'Update an existing person in Twenty',
-					routing: {
-						request: {
-							method: 'PATCH',
-							url: '=/people/{{$parameter["personId"]}}',
-							body: buildUpdatePayload,
-						},
+				action: 'Update person',
+				description: 'Update an existing person in Twenty',
+				routing: {
+					request: {
+						method: 'PATCH',
+						url: '=/people/{{$parameter["personId"]}}',
+						body: buildUpdatePayload,
 					},
 				},
-			],
+			},
+		],
 		default: 'create',
 	},
 	...personCreateDescription,
 	...personFindByEmailDescription,
+	...personListDescription,
+	...personGetDescription,
+	...personDeleteDescription,
+	...personFindDuplicatesDescription,
 	...personUpdateDescription,
 ];
