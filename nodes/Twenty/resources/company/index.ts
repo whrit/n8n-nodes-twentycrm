@@ -153,6 +153,114 @@ const buildUpdatePayload = `={{ (() => {
 const buildBulkMatchCompaniesPayload = `={{ (() => {
 	const mode = $parameter["matchMode"] ?? "collection";
 
+	const getByPath = (source, path) => {
+		if (!path || !source || typeof source !== "object") {
+			return undefined;
+		}
+		return path.split(".").reduce((acc, key) => {
+			if (acc && typeof acc === "object" && key in acc) {
+				return acc[key];
+			}
+			return undefined;
+		}, source);
+	};
+
+	const extractFirst = (candidate, paths) => {
+		for (const path of paths) {
+			const value = getByPath(candidate, path);
+			if (
+				value !== undefined &&
+				value !== null &&
+				!(typeof value === "string" && value.trim() === "")
+			) {
+				return value;
+			}
+		}
+		return undefined;
+	};
+
+	const normalizeUrl = (value) => {
+		if (typeof value !== "string") {
+			return undefined;
+		}
+		let trimmed = value.trim();
+		if (!trimmed) {
+			return undefined;
+		}
+		const lower = trimmed.toLowerCase();
+		if (lower.startsWith("http://") || lower.startsWith("https://")) {
+			return trimmed;
+		}
+		while (trimmed.startsWith("/")) {
+			trimmed = trimmed.slice(1);
+		}
+		return \`https://\${trimmed}\`;
+	};
+
+	const normalizeString = (value) => {
+		if (typeof value !== "string") {
+			return undefined;
+		}
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	};
+
+	const buildCompany = (candidate) => {
+		if (!candidate || typeof candidate !== "object") {
+			return null;
+		}
+
+		const domainCandidate = extractFirst(candidate, [
+			"domainName.primaryLinkUrl",
+			"domainUrl",
+			"domain",
+			"website",
+			"url",
+			"match.domainUrl",
+			"match.domain",
+			"match.website",
+			"lead.website",
+			"lead.company_url",
+		]);
+		const normalizedDomain = normalizeUrl(domainCandidate);
+
+		const nameCandidate = normalizeString(
+			extractFirst(candidate, [
+				"name",
+				"companyName",
+				"company_name",
+				"match.name",
+				"match.nameNormalized",
+				"lead.company_name",
+				"lead.companyName",
+			]),
+		);
+
+		const accountOwnerId = extractFirst(candidate, ["accountOwnerId"]);
+		const description = normalizeString(extractFirst(candidate, ["description"]));
+		const industry = normalizeString(extractFirst(candidate, ["industry"]));
+
+		const result = {};
+
+		if (normalizedDomain) {
+			result.domainName = { primaryLinkUrl: normalizedDomain };
+		}
+		if (nameCandidate) {
+			result.name = nameCandidate;
+		}
+		if (accountOwnerId) {
+			result.accountOwnerId = accountOwnerId;
+		}
+		if (industry) {
+			result.industry = industry;
+		}
+		if (description) {
+			result.description = description;
+		}
+
+		return Object.keys(result).length ? result : null;
+	};
+
 	const parseJsonArray = (input, errorMessage) => {
 		if (Array.isArray(input)) {
 			return input;
@@ -178,65 +286,43 @@ const buildBulkMatchCompaniesPayload = `={{ (() => {
 		return undefined;
 	};
 
-	if (mode === "json") {
-		const parsed = parseJsonArray($parameter["companiesJson"], 'Companies (JSON) must be a JSON array');
-		if (!parsed || parsed.length === 0) {
-			throw new Error('Provide at least one entry under Companies (JSON)');
-		}
-		return parsed;
-	}
+	let rawCandidates;
 
 	if (mode === "collection") {
 		const entries = Array.isArray($parameter["matchEntries"]) ? $parameter["matchEntries"] : [];
-		const payload = entries
-			.map((entry) => entry.company ?? {})
-			.map((company) => {
-				const result = {};
-				if (company.domainUrl) {
-					result.domainName = { primaryLinkUrl: company.domainUrl };
-				}
-				if (company.name) {
-					result.name = company.name;
-				}
-				if (company.accountOwnerId) {
-					result.accountOwnerId = company.accountOwnerId;
-				}
-				if (company.industry) {
-					result.industry = company.industry;
-				}
-				if (company.description) {
-					result.description = company.description;
-				}
-				return Object.keys(result).length ? result : null;
-			})
-			.filter((entry) => entry !== null);
-		if (payload.length === 0) {
-			throw new Error('Add at least one match entry to "Match Entries"');
+		rawCandidates = entries.map((entry) => entry.company ?? {});
+	} else if (mode === "json") {
+		const parsed = parseJsonArray(
+			$parameter["companiesJson"],
+			'Companies (JSON) must be a JSON array',
+		);
+		if (!parsed || parsed.length === 0) {
+			throw new Error('Provide at least one entry under Companies (JSON)');
 		}
-		return payload;
+		rawCandidates = parsed;
+	} else {
+		const propertyName = ($parameter["inputPropertyName"] ?? "companies").trim();
+		const incoming = propertyName ? getByPath($json, propertyName) : undefined;
+		if (!incoming) {
+			throw new Error('No data found at the specified input property for bulk company match');
+		}
+		if (!Array.isArray(incoming)) {
+			throw new Error('The incoming property must resolve to an array for bulk company match');
+		}
+		rawCandidates = incoming;
 	}
 
-	const propertyName = ($parameter["inputPropertyName"] ?? "companies").trim();
-	const getByPath = (source, path) => {
-		if (!path) {
-			return undefined;
-		}
-		return path.split('.').reduce((acc, key) => {
-			if (acc && typeof acc === "object" && key in acc) {
-				return acc[key];
-			}
-			return undefined;
-		}, source);
-	};
+	const payload = (Array.isArray(rawCandidates) ? rawCandidates : [])
+		.map((candidate) => buildCompany(candidate))
+		.filter((entry) => entry !== null);
 
-	const incoming = propertyName ? getByPath($json, propertyName) : undefined;
-	if (!incoming) {
-		throw new Error('No data found at the specified input property for bulk company match');
+	if (payload.length === 0) {
+		throw new Error(
+			'Unable to construct any company payloads for bulk match. Provide domains or names.',
+		);
 	}
-	if (!Array.isArray(incoming)) {
-		throw new Error('The incoming property must resolve to an array for bulk company match');
-	}
-	return incoming;
+
+	return payload;
 })() }}`;
 
 const buildBulkMatchCompaniesOutput = `={{ ($response.data ?? []).map((entry) => ({
@@ -279,19 +365,66 @@ export const companyDescription: INodeProperties[] = [
 						url: '=/companies',
 						qs: {
 							filter: `={{ (() => {
+								const normalizeUrl = (value) => {
+									if (typeof value !== "string") {
+										return undefined;
+									}
+									let trimmed = value.trim();
+									if (!trimmed) {
+										return undefined;
+									}
+									const lower = trimmed.toLowerCase();
+									if (lower.startsWith("http://") || lower.startsWith("https://")) {
+										return trimmed;
+									}
+									while (trimmed.startsWith("/")) {
+										trimmed = trimmed.slice(1);
+									}
+									return \`https://\${trimmed}\`;
+								};
+
+								const escapeValue = (input) =>
+									typeof input === "string" ? input.replace(/"/g, '\\"') : input;
+
 								const domain = ($parameter["domain"] ?? "").trim();
 								const name = ($parameter["name"] ?? "").trim();
 								const strategy = $parameter["fallbackStrategy"] ?? "domainThenName";
-								if (domain && strategy !== "nameOnly") {
-									if (name && strategy === "domainOrName") {
-										return \`or(domainName.primaryLinkUrl[eq]:"\${domain}",name[eq]:"\${name}")\`;
+
+								const normalizedDomain = normalizeUrl(domain);
+								const altDomain =
+									normalizedDomain?.startsWith("https://")
+										? normalizedDomain.replace("https://", "http://")
+										: normalizedDomain?.startsWith("http://")
+											? normalizedDomain.replace("http://", "https://")
+											: undefined;
+
+								const parts = [];
+
+								if (normalizedDomain && strategy !== "nameOnly") {
+									parts.push(
+										\`domainName.primaryLinkUrl[eq]:"\${escapeValue(normalizedDomain)}"\`,
+									);
+									if (altDomain) {
+										parts.push(
+											\`domainName.primaryLinkUrl[eq]:"\${escapeValue(altDomain)}"\`,
+										);
 									}
-									return \`domainName.primaryLinkUrl[eq]:"\${domain}"\`;
 								}
+
 								if (name && strategy !== "domainOnly") {
-									return \`name[eq]:"\${name}"\`;
+									const escapedName = escapeValue(name);
+									parts.push(\`name[ilike]:"%\${escapedName}%"\`);
 								}
-								return undefined;
+
+								if (parts.length === 0) {
+									return undefined;
+								}
+
+								if (parts.length === 1) {
+									return parts[0];
+								}
+
+								return \`or(\${parts.join(",")})\`;
 							})() }}`,
 							limit: '1',
 							depth: '={{$parameter["depth"] ?? undefined}}',

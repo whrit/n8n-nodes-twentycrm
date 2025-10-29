@@ -155,6 +155,137 @@ const buildUpdatePayload = `={{ (() => {
 const buildBulkMatchPeoplePayload = `={{ (() => {
 	const mode = $parameter["matchMode"] ?? "collection";
 
+	const getByPath = (source, path) => {
+		if (!path || !source || typeof source !== "object") {
+			return undefined;
+		}
+		return path.split(".").reduce((acc, key) => {
+			if (acc && typeof acc === "object" && key in acc) {
+				return acc[key];
+			}
+			return undefined;
+		}, source);
+	};
+
+	const extractFirst = (candidate, paths) => {
+		for (const path of paths) {
+			const value = getByPath(candidate, path);
+			if (
+				value !== undefined &&
+				value !== null &&
+				!(typeof value === "string" && value.trim() === "")
+			) {
+				return value;
+			}
+		}
+		return undefined;
+	};
+
+	const normalizeEmail = (value) => {
+		if (typeof value !== "string") {
+			return undefined;
+		}
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	};
+
+	const normalizeString = (value) => {
+		if (typeof value !== "string") {
+			return undefined;
+		}
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	};
+
+	const buildPerson = (candidate) => {
+		if (!candidate || typeof candidate !== "object") {
+			return null;
+		}
+
+		const primaryEmail = normalizeEmail(
+			extractFirst(candidate, [
+				"emails.primaryEmail",
+				"primaryEmail",
+				"email",
+				"person.email",
+				"lead.email",
+				"contact.email",
+			]),
+		);
+
+		const firstName = normalizeString(
+			extractFirst(candidate, [
+				"name.firstName",
+				"firstName",
+				"person.firstName",
+				"lead.first_name",
+				"lead.firstName",
+			]),
+		);
+
+		const lastName = normalizeString(
+			extractFirst(candidate, [
+				"name.lastName",
+				"lastName",
+				"person.lastName",
+				"lead.last_name",
+				"lead.lastName",
+			]),
+		);
+
+		const companyId = extractFirst(candidate, ["companyId", "company_id", "person.companyId"]);
+		const city =
+			normalizeString(
+				extractFirst(candidate, ["city", "location", "person.city", "lead.location"]),
+			) ?? undefined;
+		const jobTitle =
+			normalizeString(
+				extractFirst(candidate, [
+					"jobTitle",
+					"person.jobTitle",
+					"lead.job_title",
+					"lead.jobTitle",
+					"title",
+				]),
+			) ?? undefined;
+
+		const hasStructured =
+			(candidate.emails && candidate.emails.primaryEmail) ||
+			(candidate.name && (candidate.name.firstName || candidate.name.lastName));
+
+		const result = {};
+
+		if (primaryEmail) {
+			result.emails = { primaryEmail };
+		}
+		if (firstName || lastName) {
+			result.name = {};
+			if (firstName) result.name.firstName = firstName;
+			if (lastName) result.name.lastName = lastName;
+		}
+		if (companyId) {
+			result.companyId = companyId;
+		}
+		if (city) {
+			result.city = city;
+		}
+		if (jobTitle) {
+			result.jobTitle = jobTitle;
+		}
+
+		if (!Object.keys(result).length && hasStructured) {
+			return {
+				emails: candidate.emails ?? undefined,
+				name: candidate.name ?? undefined,
+				companyId: candidate.companyId ?? undefined,
+				city: candidate.city ?? undefined,
+				jobTitle: candidate.jobTitle ?? undefined,
+			};
+		}
+
+		return Object.keys(result).length ? result : null;
+	};
+
 	const parseJsonArray = (input, errorMessage) => {
 		if (Array.isArray(input)) {
 			return input;
@@ -180,67 +311,43 @@ const buildBulkMatchPeoplePayload = `={{ (() => {
 		return undefined;
 	};
 
-	if (mode === "json") {
-		const parsed = parseJsonArray($parameter["peopleJson"], 'People (JSON) must be a JSON array');
-		if (!parsed || parsed.length === 0) {
-			throw new Error('Provide at least one entry under People (JSON)');
-		}
-		return parsed;
-	}
+	let rawCandidates;
 
 	if (mode === "collection") {
 		const entries = Array.isArray($parameter["matchEntries"]) ? $parameter["matchEntries"] : [];
-		const payload = entries
-			.map((entry) => entry.person ?? {})
-			.map((person) => {
-				const result = {};
-				if (person.primaryEmail) {
-					result.emails = { primaryEmail: person.primaryEmail };
-				}
-				if (person.firstName || person.lastName) {
-					result.name = {};
-					if (person.firstName) result.name.firstName = person.firstName;
-					if (person.lastName) result.name.lastName = person.lastName;
-				}
-				if (person.companyId) {
-					result.companyId = person.companyId;
-				}
-				if (person.city) {
-					result.city = person.city;
-				}
-				if (person.jobTitle) {
-					result.jobTitle = person.jobTitle;
-				}
-				return Object.keys(result).length ? result : null;
-			})
-			.filter((entry) => entry !== null);
-		if (payload.length === 0) {
-			throw new Error('Add at least one match entry to "Match Entries"');
+		rawCandidates = entries.map((entry) => entry.person ?? {});
+	} else if (mode === "json") {
+		const parsed = parseJsonArray(
+			$parameter["peopleJson"],
+			'People (JSON) must be a JSON array',
+		);
+		if (!parsed || parsed.length === 0) {
+			throw new Error('Provide at least one entry under People (JSON)');
 		}
-		return payload;
+		rawCandidates = parsed;
+	} else {
+		const propertyName = ($parameter["inputPropertyName"] ?? "people").trim();
+		const incoming = propertyName ? getByPath($json, propertyName) : undefined;
+		if (!incoming) {
+			throw new Error('No data found at the specified input property for bulk person match');
+		}
+		if (!Array.isArray(incoming)) {
+			throw new Error('The incoming property must resolve to an array for bulk person match');
+		}
+		rawCandidates = incoming;
 	}
 
-	const propertyName = ($parameter["inputPropertyName"] ?? "people").trim();
-	const getByPath = (source, path) => {
-		if (!path) {
-			return undefined;
-		}
-		return path.split('.').reduce((acc, key) => {
-			if (acc && typeof acc === "object" && key in acc) {
-				return acc[key];
-			}
-			return undefined;
-		}, source);
-	};
+	const payload = (Array.isArray(rawCandidates) ? rawCandidates : [])
+		.map((candidate) => buildPerson(candidate))
+		.filter((entry) => entry !== null);
 
-	const incoming = propertyName ? getByPath($json, propertyName) : undefined;
-	if (!incoming) {
-		throw new Error('No data found at the specified input property for bulk person match');
+	if (payload.length === 0) {
+		throw new Error(
+			'Unable to construct any person payloads for bulk match. Provide emails or names.',
+		);
 	}
-	if (!Array.isArray(incoming)) {
-		throw new Error('The incoming property must resolve to an array for bulk person match');
-	}
-	return incoming;
+
+	return payload;
 })() }}`;
 
 const buildBulkMatchPeopleOutput = `={{ ($response.data ?? []).map((entry) => ({
