@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-twentycrm-new",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "n8n community nodes for the Twenty CRM REST API and webhook trigger.",
   "license": "MIT",
   "homepage": "https://github.com/whrit/n8n-nodes-twentycrm.git",
