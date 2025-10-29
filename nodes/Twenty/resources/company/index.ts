@@ -151,34 +151,92 @@ const buildUpdatePayload = `={{ (() => {
 
 
 const buildBulkMatchCompaniesPayload = `={{ (() => {
-	const parseArray = (input) => {
+	const mode = $parameter["matchMode"] ?? "collection";
+
+	const parseJsonArray = (input, errorMessage) => {
 		if (Array.isArray(input)) {
 			return input;
 		}
-		if (typeof input === "string" && input.trim().length > 0) {
-			const parsed = JSON.parse(input);
-			if (!Array.isArray(parsed)) {
-				throw new Error('Companies (JSON) must be an array');
+		if (typeof input === "string") {
+			const trimmed = input.trim();
+			if (!trimmed.length) {
+				return undefined;
 			}
-			return parsed;
+			try {
+				const parsed = JSON.parse(trimmed);
+				if (!Array.isArray(parsed)) {
+					throw new Error(errorMessage);
+				}
+				return parsed;
+			} catch (error) {
+				throw new Error(errorMessage);
+			}
 		}
-		if (input && typeof input === "object" && !Array.isArray(input)) {
-			throw new Error('Companies (JSON) must be an array');
+		if (input && typeof input === "object") {
+			throw new Error(errorMessage);
 		}
 		return undefined;
 	};
 
-	const fromParam = parseArray($parameter["companiesJson"]);
-	if (fromParam) {
-		return fromParam;
+	if (mode === "json") {
+		const parsed = parseJsonArray($parameter["companiesJson"], 'Companies (JSON) must be a JSON array');
+		if (!parsed || parsed.length === 0) {
+			throw new Error('Provide at least one entry under Companies (JSON)');
+		}
+		return parsed;
 	}
 
-	const fromInput = parseArray($json["companies"]);
-	if (fromInput) {
-		return fromInput;
+	if (mode === "collection") {
+		const entries = Array.isArray($parameter["matchEntries"]) ? $parameter["matchEntries"] : [];
+		const payload = entries
+			.map((entry) => entry.company ?? {})
+			.map((company) => {
+				const result = {};
+				if (company.domainUrl) {
+					result.domainName = { primaryLinkUrl: company.domainUrl };
+				}
+				if (company.name) {
+					result.name = company.name;
+				}
+				if (company.accountOwnerId) {
+					result.accountOwnerId = company.accountOwnerId;
+				}
+				if (company.industry) {
+					result.industry = company.industry;
+				}
+				if (company.description) {
+					result.description = company.description;
+				}
+				return Object.keys(result).length ? result : null;
+			})
+			.filter((entry) => entry !== null);
+		if (payload.length === 0) {
+			throw new Error('Add at least one match entry to "Match Entries"');
+		}
+		return payload;
 	}
 
-	throw new Error('Provide Companies (JSON) or an incoming "companies" array for bulk company match');
+	const propertyName = ($parameter["inputPropertyName"] ?? "companies").trim();
+	const getByPath = (source, path) => {
+		if (!path) {
+			return undefined;
+		}
+		return path.split('.').reduce((acc, key) => {
+			if (acc && typeof acc === "object" && key in acc) {
+				return acc[key];
+			}
+			return undefined;
+		}, source);
+	};
+
+	const incoming = propertyName ? getByPath($json, propertyName) : undefined;
+	if (!incoming) {
+		throw new Error('No data found at the specified input property for bulk company match');
+	}
+	if (!Array.isArray(incoming)) {
+		throw new Error('The incoming property must resolve to an array for bulk company match');
+	}
+	return incoming;
 })() }}`;
 
 const buildBulkMatchCompaniesOutput = `={{ ($response.data ?? []).map((entry) => ({

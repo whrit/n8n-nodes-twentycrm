@@ -121,9 +121,30 @@ describe('Twenty node description', () => {
 	});
 
 	it('provides person bulk match configuration fields', () => {
+		const modeField = findProperty(description.properties, 'matchMode', {
+			resource: 'person',
+			operation: 'bulkMatch',
+		});
+		expect(modeField?.type).toBe('options');
+
+		const entriesField = findProperty(description.properties, 'matchEntries', {
+			resource: 'person',
+			operation: 'bulkMatch',
+			matchMode: 'collection',
+		});
+		expect(entriesField?.type).toBe('fixedCollection');
+
+		const inputPropertyField = findProperty(description.properties, 'inputPropertyName', {
+			resource: 'person',
+			operation: 'bulkMatch',
+			matchMode: 'input',
+		});
+		expect(inputPropertyField?.type).toBe('string');
+
 		const peopleJsonField = findProperty(description.properties, 'peopleJson', {
 			resource: 'person',
 			operation: 'bulkMatch',
+			matchMode: 'json',
 		});
 		expect(peopleJsonField?.type).toBe('json');
 
@@ -263,9 +284,30 @@ describe('Twenty node description', () => {
 	});
 
 	it('provides company bulk match configuration fields', () => {
+		const modeField = findProperty(description.properties, 'matchMode', {
+			resource: 'company',
+			operation: 'bulkMatch',
+		});
+		expect(modeField?.type).toBe('options');
+
+		const entriesField = findProperty(description.properties, 'matchEntries', {
+			resource: 'company',
+			operation: 'bulkMatch',
+			matchMode: 'collection',
+		});
+		expect(entriesField?.type).toBe('fixedCollection');
+
+		const inputPropertyField = findProperty(description.properties, 'inputPropertyName', {
+			resource: 'company',
+			operation: 'bulkMatch',
+			matchMode: 'input',
+		});
+		expect(inputPropertyField?.type).toBe('string');
+
 		const companiesJsonField = findProperty(description.properties, 'companiesJson', {
 			resource: 'company',
 			operation: 'bulkMatch',
+			matchMode: 'json',
 		});
 		expect(companiesJsonField?.type).toBe('json');
 
